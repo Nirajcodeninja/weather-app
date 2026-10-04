@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Weather App</title>
+    <!-- Leaflet CSS for Interactive Map -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            min-height: 100vh; display: flex; justify-content: center; background: #0b0d1b; color: #ffffff;
+            transition: background 0.8s ease; overflow-x: hidden; -webkit-font-smoothing: antialiased;
+        }
+
+        body.day.Clear { background: linear-gradient(180deg, #3a7bd5 0%, #3a6073 100%); }
+        body.day.Clouds { background: linear-gradient(180deg, #525252 0%, #3d72b4 100%); }
+        body.day.Rain, body.day.Drizzle { background: linear-gradient(180deg, #2c3e50 0%, #3498db 100%); }
+        body.day.Thunderstorm { background: linear-gradient(180deg, #1f1c2c 0%, #928dab 100%); }
+        body.day.Snow { background: linear-gradient(180deg, #70e1f5 0%, #ffd194 100%); }
+        body.day.Mist, body.day.Smoke, body.day.Haze, body.day.Fog { background: linear-gradient(180deg, #757f9a 0%, #d7dde8 100%); }
+
+        body.night.Clear, body.Clear { background: linear-gradient(180deg, #10162c 0%, #1c2541 100%); }
+        body.night.Clouds, body.Clouds { background: linear-gradient(180deg, #1f2937 0%, #374151 100%); }
+        body.night.Rain, body.night.Drizzle, body.Rain, body.Drizzle { background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%); }
+        body.night.Thunderstorm, body.Thunderstorm { background: linear-gradient(180deg, #090a0f 0%, #171923 100%); }
+        body.night.Snow, body.Snow { background: linear-gradient(180deg, #1e293b 0%, #475569 100%); }
+        body.night.Mist, body.night.Smoke, body.night.Haze, body.night.Fog, body.Mist, body.Smoke, body.Haze, body.Fog { background: linear-gradient(180deg, #2c3e50 0%, #4ca1af 100%); }
+
+        .bg-fx { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; pointer-events: none; z-index: 0; overflow: hidden; }
+        .stars-container { position: absolute; width: 100%; height: 100%; display: none; }
+        body.night.Clear .stars-container, body.Clear .stars-container { display: block; }
+        body.day .stars-container { display: none !important; }
+        .star { position: absolute; background: #ffffff; border-radius: 50%; }
+        .star:nth-child(1)  { top: 8%;  left: 12%; width: 2px; height: 2px; opacity: 0.9; box-shadow: 0 0 3px #fff; }
+        .star:nth-child(2)  { top: 15%; left: 82%; width: 1px; height: 1px; opacity: 0.4; }
+        .star:nth-child(3)  { top: 22%; left: 35%; width: 3px; height: 3px; opacity: 0.8; box-shadow: 0 0 4px #fff; }
+
+        .app-container {
+            position: relative; z-index: 1; width: 100%; max-width: 900px; min-height: 100vh;
+            display: flex; flex-direction: column; padding: 20px 20px 100px 20px; overflow: hidden; 
+        }
+
+        .search-box-wrapper { position: relative; width: 100%; max-width: 414px; margin: 0 auto 20px auto; z-index: 20; }
+        .search-box {
+            display: flex; align-items: center; background: rgba(30, 40, 70, 0.4); backdrop-filter: blur(20px);
+            border-radius: 12px; border: 0.5px solid rgba(255, 255, 255, 0.2); padding: 8px 14px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .search-box input { flex: 1; background: transparent; border: none; color: white; font-size: 16px; outline: none; padding-left: 8px; }
+        .search-box input::placeholder { color: rgba(255, 255, 255, 0.5); }
+        .search-icon { font-size: 16px; color: rgba(255, 255, 255, 0.7); }
+
+        .recent-search-btn {
+            background: transparent; border: none; color: rgba(255, 255, 255, 0.7); font-size: 18px; cursor: pointer;
+            padding: 4px; margin-left: 6px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+        }
+        .recent-search-btn:hover { color: #ffffff; background: rgba(255, 255, 255, 0.1); }
+
+        .dropdown-menu {
+            position: absolute; top: 100%; left: 0; right: 0; background: rgba(20, 25, 45, 0.95); backdrop-filter: blur(15px);
+            border-radius: 12px; margin-top: 8px; list-style: none; border: 0.5px solid rgba(255, 255, 255, 0.15); max-height: 200px;
+            overflow-y: auto; display: none; box-shadow: 0 10px 25px rgba(0,0,0,0.5); z-index: 30;
+        }
+        .dropdown-menu li { padding: 12px 16px; cursor: pointer; font-size: 15px; border-bottom: 0.5px solid rgba(255, 255, 255, 0.1); display: flex; justify-content: space-between; }
+        .dropdown-menu li:last-child { border-bottom: none; }
+        .dropdown-menu li:hover { background: rgba(255, 255, 255, 0.1); }
+        .dropdown-header { padding: 8px 16px 4px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.8px; color: rgba(255, 255, 255, 0.5); font-weight: 600; }
+
+        .header-info { text-align: center; margin-bottom: 25px; }
+        .city-header-wrapper { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: -2px; }
+        .city-name { font-size: 34px; font-weight: 400; letter-spacing: 0.5px; }
+        .date-time { font-size: 14px; color: rgba(255, 255, 255, 0.75); margin-bottom: 5px; }
+
+        .pin-btn {
+            background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.3); color: #ffffff;
+            width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+        .pin-btn:hover { background: rgba(255, 255, 255, 0.3); transform: scale(1.05); }
+        .pin-btn.active { background: #ffffff; color: #0b0d1b; }
+
+        .temp-display { font-size: 96px; font-weight: 200; line-height: 1.1; margin-left: 15px; }
+        .condition { font-size: 20px; font-weight: 500; color: rgba(255, 255, 255, 0.9); margin-bottom: 2px; }
+        .high-low { font-size: 20px; font-weight: 500; color: rgba(255, 255, 255, 0.9); }
+        .high-low span { margin: 0 6px; }
+
+        .forecast-wrapper { display: flex; gap: 20px; width: 100%; margin-bottom: 12px; }
+        .forecast-wrapper > div { flex: 1; min-width: 0; }
+
+        .glass-card {
+            background: rgba(30, 40, 70, 0.4); backdrop-filter: blur(20px); border-radius: 16px; padding: 16px;
+            border: 0.5px solid rgba(255, 255, 255, 0.15); width: 100%; height: 100%; display: flex; flex-direction: column;
+            min-height: 0; 
+        }
+        .card-header { font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, 0.6); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 6px; margin-bottom: 12px; }
+
+        .summary-text { font-size: 14px; line-height: 1.35; font-weight: 500; padding-bottom: 10px; border-bottom: 0.5px solid rgba(255, 255, 255, 0.2); margin-bottom: 10px; }
+        
+        .hourly-container { 
+            display: flex; gap: 16px; width: 100%; overflow-x: auto; overflow-y: hidden; padding-bottom: 12px; 
+            -webkit-overflow-scrolling: touch; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.5) rgba(0, 0, 0, 0.2);
+        }
+        .hourly-container::-webkit-scrollbar { height: 6px; display: block; }
+        .hourly-container::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
+        .hourly-container::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.5); border-radius: 4px; }
+        .hourly-card { display: flex; flex-direction: column; align-items: center; min-width: 45px; flex-shrink: 0; }
+        .hourly-time { font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+        .hourly-icon { font-size: 20px; margin-bottom: 8px; }
+        .hourly-temp { font-size: 18px; font-weight: 500; }
+
+        .daily-scroll-container {
+            width: 100%; flex: 1; max-height: 240px; overflow-y: scroll; overflow-x: hidden; padding-right: 12px;
+            -webkit-overflow-scrolling: touch; scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, 0.5) rgba(0, 0, 0, 0.2);
+            min-height: 0; 
+        }
+        .daily-scroll-container::-webkit-scrollbar { width: 8px; display: block; }
+        .daily-scroll-container::-webkit-scrollbar-track { background: rgba(0, 0, 0, 0.2); border-radius: 4px; }
+        .daily-scroll-container::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.5); border-radius: 4px; }
+
+        .daily-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 0.5px solid rgba(255, 255, 255, 0.1); }
+        .daily-row:last-child { border-bottom: none; }
+        .daily-day { flex: 0 0 60px; font-size: 16px; font-weight: 500; }
+        .daily-icon { flex: 0 0 40px; font-size: 20px; text-align: center; }
+        .daily-temps { flex: 1; display: flex; align-items: center; justify-content: flex-end; gap: 15px; font-size: 16px; font-weight: 500; }
+        .daily-temps .low { color: rgba(255, 255, 255, 0.5); width: 30px; text-align: right; }
+        .daily-temps .high { width: 30px; text-align: right; }
+        .temp-bar-wrapper { width: 70px; height: 4px; background: rgba(0, 0, 0, 0.2); border-radius: 2px; position: relative; overflow: hidden; }
+        .temp-bar { position: absolute; height: 100%; border-radius: 2px; }
+
+        .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 100%; }
+        .metric-card {
+            background: rgba(30, 40, 70, 0.4); backdrop-filter: blur(20px); border-radius: 16px; padding: 16px;
+            border: 0.5px solid rgba(255, 255, 255, 0.15); display: flex; flex-direction: column;
+        }
+        .metric-header { font-size: 13px; font-weight: 600; color: rgba(255, 255, 255, 0.6); text-transform: uppercase; margin-bottom: 8px; }
+        .metric-value { font-size: 28px; font-weight: 500; margin-bottom: 4px; }
+        .metric-desc { font-size: 14px; font-weight: 500; color: rgba(255, 255, 255, 0.8); }
+
+        .bottom-nav {
+            position: fixed; bottom: 0; left: 0; width: 100%; padding: 15px 20px 25px 20px;
+            display: flex; justify-content: space-between; align-items: center; background: #10162c;
+            border-top: 0.5px solid rgba(255, 255, 255, 0.1); z-index: 10;
+        }
+        .bottom-nav-icon { font-size: 24px; cursor: pointer; color: white; text-decoration: none; background: transparent; border: none; }
+        .page-dots { display: flex; gap: 8px; align-items: center; }
+
+        .dot-btn { background: rgba(255, 255, 255, 0.3); border: none; width: 8px; height: 8px; border-radius: 50%; cursor: pointer; text-decoration: none; display: inline-block; }
+        .dot-btn.active { background: #ffffff; }
+        .dot-btn.current-location { background: transparent; width: auto; height: auto; color: rgba(255, 255, 255, 0.3); display: flex; align-items: center; padding: 0; }
+        .dot-btn.current-location.active { color: #ffffff; }
+
+        /* Map & List Modal Overlay Styles */
+        #map-modal, #list-modal {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85);
+            z-index: 100; display: none; justify-content: center; align-items: center; padding: 20px;
+        }
+        .map-container-box {
+            position: relative; width: 100%; max-width: 800px; height: 80vh; background: #1e293b;
+            border-radius: 16px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 15px 35px rgba(0,0,0,0.5);
+            display: flex; flex-direction: column;
+        }
+        .map-header { padding: 15px 20px; display: flex; justify-content: space-between; align-items: center; background: #10162c; border-bottom: 1px solid rgba(255,255,255,0.1); }
+        .map-title { font-size: 16px; font-weight: 600; color: white; }
+        .close-map-btn, .close-list-btn { background: transparent; border: none; color: white; font-size: 24px; cursor: pointer; }
+        #leaflet-map { width: 100%; flex: 1; background: #0b0d1b; }
+
+        /* iOS Weather Card List Style */
+        .list-container-box {
+            position: relative; width: 100%; max-width: 450px; height: 85vh; background: #10162c;
+            border-radius: 20px; overflow: hidden; border: 1px solid rgba(255,255,255,0.15); box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+            display: flex; flex-direction: column;
+        }
+        .list-body { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 15px; }
+        .weather-ios-card {
+            background: linear-gradient(135deg, rgba(40, 55, 95, 0.7), rgba(20, 30, 55, 0.8));
+            backdrop-filter: blur(20px); border-radius: 16px; padding: 18px 20px; border: 0.5px solid rgba(255,255,255,0.2);
+            display: flex; justify-content: space-between; align-items: center; cursor: pointer; text-decoration: none; color: white;
+            transition: transform 0.2s, background 0.2s; box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+        }
+        .weather-ios-card:hover { transform: scale(1.02); background: linear-gradient(135deg, rgba(50, 70, 115, 0.8), rgba(30, 45, 75, 0.9)); }
+        .ios-card-left { display: flex; flex-direction: column; justify-content: center; }
+        .ios-city { font-size: 22px; font-weight: 600; margin-bottom: 2px; }
+        .ios-subtitle { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 12px; }
+        .ios-condition { font-size: 15px; font-weight: 500; color: rgba(255,255,255,0.9); }
+        .ios-card-right { display: flex; flex-direction: column; align-items: flex-end; justify-content: center; }
+        .ios-temp { font-size: 42px; font-weight: 300; line-height: 1; margin-bottom: 8px; }
+        .ios-high-low { font-size: 13px; color: rgba(255,255,255,0.8); }
+
+        @media (max-width: 768px) {
+            .forecast-wrapper { flex-direction: column; }
+            .daily-scroll-container { max-height: 240px; }
+            .app-container { max-width: 414px; } 
+        }
+    </style>
+</head>
+<body class="{% if weather %}{% if weather.is_day %}day{% else %}night{% endif %} {{ weather.description }}{% else %}night Clear{% endif %}">
+
+    <div class="bg-fx">
+        <div class="stars-container"><div class="star"></div><div class="star"></div><div class="star"></div></div>
+    </div>
+
+    <div class="app-container">
+
+        <!-- Search Input -->
+        <div class="search-box-wrapper">
+            <form method="POST" class="search-box" id="weather-form">
+                {% csrf_token %}
+                <span class="search-icon">🔍</span>
+                <input type="text" name="city" id="city-input" placeholder="Search for a city or airport" autocomplete="off" required>
+                <input type="hidden" name="lat" id="lat-input">
+                <input type="hidden" name="lon" id="lon-input">
+                <button type="button" class="recent-search-btn" id="history-btn" title="Recent Searches">🕒</button>
+            </form>
+            <ul id="suggestions-list" class="dropdown-menu"></ul>
+            <ul id="history-dropdown" class="dropdown-menu">
+                <div class="dropdown-header">Recent Searches</div>
+                {% for search in recent_searches %}
+                <li onclick="searchCity('{{ search.city_name }}')">
+                    <span>{{ search.city_name }}</span>
+                    <span>{{ search.temperature }}°C</span>
+                </li>
+                {% empty %}
+                <li style="cursor: default;">No recent searches</li>
+                {% endfor %}
+            </ul>
+        </div>
+        
+        {% if weather %}
+        <!-- Header Info -->
+        <div class="header-info">
+            <div class="city-header-wrapper">
+                <h1 class="city-name">{{ weather.city }}</h1>
+                
+                <form action="{% url 'pin_location' %}" method="POST" style="margin:0;">
+                    {% csrf_token %}
+                    <input type="hidden" name="city_name" value="{{ weather.city }}">
+                    <button type="submit" class="pin-btn {% if is_pinned %}active{% endif %}" title="Pin/Unpin location">
+                        {% if is_pinned %}
+                        <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" stroke="currentColor" stroke-width="2"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"></path></svg>
+                        {% else %}
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                        {% endif %}
+                    </button>
+                </form>
+            </div>
+            
+            <div class="date-time">{{ weather.date_time }}</div>
+
+            <div class="temp-display">{{ weather.temperature }}&deg;</div>
+            <div class="condition">{{ weather.description }}</div>
+            <div class="high-low"><span>H:{{ weather.temp_max }}&deg;</span><span>L:{{ weather.temp_min }}&deg;</span></div>
+        </div>
+
+        <div class="forecast-wrapper">
+            <!-- Hourly Forecast -->
+            <div class="glass-card">
+                <div class="summary-text">{{ weather.description }} conditions expected. Sunrise at {{ weather.sunrise }}, Sunset at {{ weather.sunset }}.</div>
+                <div class="hourly-container">
+                    {% for hour in weather.hourly_forecast %}
+                    <div class="hourly-card">
+                        <span class="hourly-time">{{ hour.time }}</span>
+                        <span class="hourly-icon">{{ hour.icon }}</span>
+                        <span class="hourly-temp">{{ hour.temp }}&deg;</span>
+                    </div>
+                    {% empty %}
+                    <div class="hourly-card"><span class="hourly-time">Now</span><span class="hourly-icon">🌙</span><span class="hourly-temp">24&deg;</span></div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- 10-Day Forecast -->
+            <div class="glass-card">
+                <div class="card-header"><span>📅 10-DAY FORECAST</span></div>
+                <div class="daily-scroll-container">
+                    {% for day in weather.daily_forecast %}
+                    <div class="daily-row">
+                        <span class="daily-day">{{ day.day_name }}</span>
+                        <span class="daily-icon">{{ day.icon }}</span>
+                        <div class="daily-temps">
+                            <span class="low">{{ day.temp_min }}&deg;</span>
+                            <div class="temp-bar-wrapper">
+                                <div class="temp-bar" style="left: {{ day.bar_left }}%; width: {{ day.bar_width }}%; background: linear-gradient(90deg, #f39c12, #e74c3c);"></div>
+                            </div>
+                            <span class="high">{{ day.temp_max }}&deg;</span>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="daily-row"><span class="daily-day">Today</span><span class="daily-icon">🌙</span><div class="daily-temps"><span class="low">23&deg;</span><div class="temp-bar-wrapper"><div class="temp-bar" style="left: 10%; width: 70%; background: linear-gradient(90deg, #f39c12, #e74c3c);"></div></div><span class="high">34&deg;</span></div></div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="metrics-grid">
+            <div class="metric-card"><div class="metric-header"><span>💨 AIR QUALITY</span></div><div class="metric-value">{{ weather.aqi }}</div><div class="metric-desc">Air quality status</div></div>
+            <div class="metric-card"><div class="metric-header"><span>☂️ PRECIPITATION</span></div><div class="metric-value">{{ weather.precipitation }}%</div><div class="metric-desc">Chance of rain next 24h.</div></div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Bottom Navigation Bar -->
+    <div class="bottom-nav">
+        <!-- Map Icon Button -->
+        <button type="button" id="map-btn" class="bottom-nav-icon" title="Open Map">🗺️</button>
+        
+        <div class="page-dots">
+            <button type="button" id="current-location-btn" class="dot-btn current-location {% if is_local %}active{% endif %}" title="Current Location">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor"><path d="M21 3L3 10.53v.98l6.84 2.65L12.48 21h.98L21 3z"/></svg>
+            </button>
+
+            {% for loc in nav_locations %}
+                <a href="?city={{ loc.city_name }}" class="dot-btn {% if weather.city == loc.city_name and not is_local %}active{% endif %}" title="{{ loc.city_name }}"></a>
+            {% endfor %}
+        </div>
+        
+        <!-- Saved Locations List Button -->
+        <button type="button" id="list-btn" class="bottom-nav-icon" title="Saved Locations">📋</button>
+    </div>
+
+    <!-- Map Modal Pop-up Container -->
+    <div id="map-modal">
+        <div class="map-container-box">
+            <div class="map-header">
+                <span class="map-title">Current Location Map</span>
+                <button type="button" class="close-map-btn" id="close-map-btn">&times;</button>
+            </div>
+            <div id="leaflet-map"></div>
+        </div>
+    </div>
+
+    <!-- Saved Locations List Modal Container (iOS Style) -->
+    <div id="list-modal">
+        <div class="list-container-box">
+            <div class="map-header">
+                <span class="map-title">Weather</span>
+                <button type="button" class="close-list-btn" id="close-list-btn">&times;</button>
+            </div>
+            <div class="list-body">
+                {% for loc in nav_locations_detailed %}
+                <a href="?city={{ loc.city_name }}" class="weather-ios-card">
+                    <div class="ios-card-left">
+                        <div class="ios-city">{{ loc.city_name }}</div>
+                        <div class="ios-subtitle">Saved Location</div>
+                        <div class="ios-condition">{{ loc.description }}</div>
+                    </div>
+                    <div class="ios-card-right">
+                        <div class="ios-temp">{{ loc.temperature }}&deg;</div>
+                        <div class="ios-high-low">H:{{ loc.temp_max }}&deg; L:{{ loc.temp_min }}&deg;</div>
+                    </div>
+                </a>
+                {% empty %}
+                <div style="text-align: center; color: rgba(255,255,255,0.5); margin-top: 50px; font-size: 15px;">
+                    No saved locations yet.<br>Click the pin icon on any city to add it here!
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS Library -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        const cityInput = document.getElementById('city-input');
+        const latInput = document.getElementById('lat-input');
+        const lonInput = document.getElementById('lon-input');
+        const suggestionsList = document.getElementById('suggestions-list');
+        const historyDropdown = document.getElementById('history-dropdown');
+        const historyBtn = document.getElementById('history-btn');
+        const weatherForm = document.getElementById('weather-form');
+        let debounceTimer;
+
+        let cachedLat = null;
+        let cachedLon = null;
+        let leafletMap = null;
+        let mapMarker = null;
+
+        function fetchLocalWeather() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((position) => {
+                    cachedLat = position.coords.latitude;
+                    cachedLon = position.coords.longitude;
+                    window.location.href = `?lat=${cachedLat}&lon=${cachedLon}`;
+                }, (error) => {
+                    console.log("Geolocation error or permission denied:", error);
+                    alert("Unable to retrieve your location. Please check browser location permissions.");
+                }, { timeout: 10000, enableHighAccuracy: true });
+            } else {
+                alert("Geolocation is not supported by your browser.");
+            }
+        }
+
+        {% if not weather and not request.GET.lat %}
+            window.addEventListener('DOMContentLoaded', fetchLocalWeather);
+        {% else %}
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition((pos) => {
+                    cachedLat = pos.coords.latitude;
+                    cachedLon = pos.coords.longitude;
+                });
+            }
+        {% endif %}
+
+        const currentLocationBtn = document.getElementById('current-location-btn');
+        if (currentLocationBtn) {
+            currentLocationBtn.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (cachedLat && cachedLon) {
+                    window.location.href = `?lat=${cachedLat}&lon=${cachedLon}`;
+                } else {
+                    fetchLocalWeather();
+                }
+            });
+        }
+
+        // Map Modal Trigger
+        const mapBtn = document.getElementById('map-btn');
+        const mapModal = document.getElementById('map-modal');
+        const closeMapBtn = document.getElementById('close-map-btn');
+
+        if (mapBtn) {
+            mapBtn.addEventListener('click', () => {
+                mapModal.style.display = 'flex';
+                const targetLat = cachedLat || 27.1767; 
+                const targetLon = cachedLon || 78.0081;
+
+                setTimeout(() => {
+                    if (!leafletMap) {
+                        leafletMap = L.map('leaflet-map').setView([targetLat, targetLon], 13);
+                        L.tileLayer('https://{s}.tile.openstreetmap.de/tiles/osmde/{z}/{x}/{y}.png', {
+                            maxZoom: 18,
+                            attribution: '&copy; OpenStreetMap contributors'
+                        }).addTo(leafletMap);
+
+                        mapMarker = L.marker([targetLat, targetLon]).addTo(leafletMap)
+                            .bindPopup("<b>Your Current Location</b>").openPopup();
+                    } else {
+                        leafletMap.setView([targetLat, targetLon], 13);
+                        mapMarker.setLatLng([targetLat, targetLon]);
+                    }
+                    leafletMap.invalidateSize();
+                }, 100);
+            });
+        }
+
+        if (closeMapBtn) {
+            closeMapBtn.addEventListener('click', () => { mapModal.style.display = 'none'; });
+        }
+
+        // Saved Locations List Modal Trigger
+        const listBtn = document.getElementById('list-btn');
+        const listModal = document.getElementById('list-modal');
+        const closeListBtn = document.getElementById('close-list-btn');
+
+        if (listBtn) {
+            listBtn.addEventListener('click', () => { listModal.style.display = 'flex'; });
+        }
+        if (closeListBtn) {
+            closeListBtn.addEventListener('click', () => { listModal.style.display = 'none'; });
+        }
+
+        window.addEventListener('click', (e) => {
+            if (e.target === mapModal) mapModal.style.display = 'none';
+            if (e.target === listModal) listModal.style.display = 'none';
+        });
+
+        if(cityInput) {
+            cityInput.addEventListener('input', function () {
+                clearTimeout(debounceTimer);
+                historyDropdown.style.display = 'none'; 
+                const query = this.value.trim();
+
+                if (query.length < 2) {
+                    suggestionsList.style.display = 'none';
+                    suggestionsList.innerHTML = '';
+                    return;
+                }
+
+                debounceTimer = setTimeout(() => {
+                    fetch(`/city-autocomplete/?q=${encodeURIComponent(query)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            suggestionsList.innerHTML = '';
+                            if (data.length > 0) {
+                                data.forEach(item => {
+                                    const li = document.createElement('li');
+                                    li.textContent = item.label;
+                                    li.addEventListener('click', () => { searchCity(item.name); });
+                                    suggestionsList.appendChild(li);
+                                });
+                                suggestionsList.style.display = 'block';
+                            } else {
+                                suggestionsList.style.display = 'none';
+                            }
+                        }).catch(() => { suggestionsList.style.display = 'none'; });
+                }, 300);
+            });
+        }
+
+        if(historyBtn) {
+            historyBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                suggestionsList.style.display = 'none';
+                const isVisible = historyDropdown.style.display === 'block';
+                historyDropdown.style.display = isVisible ? 'none' : 'block';
+            });
+        }
+
+        document.addEventListener('click', function (e) {
+            if (cityInput && !cityInput.contains(e.target) && !suggestionsList.contains(e.target)) suggestionsList.style.display = 'none';
+            if (historyBtn && !historyBtn.contains(e.target) && !historyDropdown.contains(e.target)) historyDropdown.style.display = 'none';
+        });
+
+        function searchCity(cityName) {
+            if(cityInput) cityInput.value = cityName;
+            suggestionsList.style.display = 'none';
+            if(historyDropdown) historyDropdown.style.display = 'none';
+            weatherForm.submit();
+        }
+    </script>
+</body>
+</html>
