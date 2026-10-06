@@ -1,8 +1,9 @@
 # Real-Time Weather Application
 
 Unit-3 Django Practical Project  
-Student: Niraj Patel  
-Course: B.Tech CSE / IT (Practical Assignment)  
+Student: Niraj Patel
+Registration no: RA2511056030004
+Course: B.Tech CSE (Data Science-A)  
 Live Demo: [nirajpatel2278.pythonanywhere.com](https://nirajpatel2278.pythonanywhere.com)
 
 ---
