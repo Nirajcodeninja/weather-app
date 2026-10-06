@@ -10,7 +10,7 @@ Live Demo: [nirajpatel2278.pythonanywhere.com](https://nirajpatel2278.pythonanyw
 ## Project Overview
 
 This is a real-time weather forecasting web application built using Django. It connects with the **OpenWeatherMap API** suite to fetch and display live weather conditions, geocoding autocomplete, air quality indices, and multi-day forecasts through a clean web interface.  
-Reference: [OpenWeatherMap API Documentation](https://openweathermap.org/api)
+Reference: https://www.geeksforgeeks.org/python/django-projects/
 
 ---
 
