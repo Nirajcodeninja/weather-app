@@ -1,11 +1,3 @@
-# Real-Time Weather Application
-
-Unit-3 Django Practical Project\n
-Student: Niraj Patel
-Registration no: RA2511056030004
-Course: B.Tech CSE (Data Science-A)  
----
-
 ## Project Overview
 
 This is a real-time weather forecasting web application built using Django. It connects with the **OpenWeatherMap API** suite to fetch and display live weather conditions, geocoding autocomplete, air quality indices, and multi-day forecasts through a clean web interface.  
