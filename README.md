@@ -4,8 +4,6 @@ Unit-3 Django Practical Project
 Student: Niraj Patel
 Registration no: RA2511056030004
 Course: B.Tech CSE (Data Science-A)  
-Live Demo: [nirajpatel2278.pythonanywhere.com](https://nirajpatel2278.pythonanywhere.com)
-
 ---
 
 ## Project Overview
